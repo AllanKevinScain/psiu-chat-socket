@@ -76,6 +76,16 @@ svg {
 .bubble-wrap {
   max-width: 75%;
 }
+.message-sender {
+  margin: 0 3px 6px;
+  color: #7b897b;
+  font-size: 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.mine .message-sender {
+  text-align: right;
+}
 .bubble {
   padding: 13px 17px;
   background: #f0f2eb;
