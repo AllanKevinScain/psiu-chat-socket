@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f7f2" />
+    <title>psiu — boas conversas começam aqui</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <svg class="svg-definitions" aria-hidden="true">
+      <defs>
+        <symbol id="send" viewBox="0 0 24 24">
+          <path d="m21 3-7 18-4-8-8-4 19-6ZM10 13 21 3" />
+        </symbol>
+      </defs>
+    </svg>
+    <main class="app">
+      <h1 class="brand">psiu<span>.</span></h1>
+      <section class="chat" aria-label="Conversa">
+        <div
+          class="messages"
+          id="messages"
+          role="log"
+          aria-label="Mensagens"
+          aria-live="polite"
+        ></div>
+        <div class="composer-area">
+          <form class="composer" id="composer">
+            <textarea
+              id="message-input"
+              placeholder="Escreva uma mensagem…"
+              aria-label="Escreva uma mensagem"
+              rows="1"
+              maxlength="4000"
+            ></textarea
+            ><button type="submit" class="send" aria-label="Enviar mensagem">
+              <svg><use href="#send" /></svg>
+            </button>
+          </form>
+        </div>
+      </section>
+    </main>
+    <div class="toast" id="toast" role="status" hidden></div>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const initialMessages = [
+        ["Oi! Bom dia ☀️\nComo estão as coisas por aí?", false, "10:30"],
+        ["Oii! Tudo bem por aqui. E com você?", true, "10:32"],
+        [
+          "Tudo ótimo! Estava pensando…\nQue tal um café hoje à tarde? ☕",
+          false,
+          "10:33",
+        ],
+        [
+          "Adorei a ideia! Faz tempo que a gente não coloca o papo em dia.",
+          true,
+          "10:35",
+        ],
+        [
+          "Vamos naquele lugar que você comentou?\nParece ser superaconchegante.",
+          true,
+          "10:35",
+        ],
+        [
+          "Simm! O da esquina, cheio de plantinhas 🪴\nPode ser às 16h?",
+          false,
+          "10:38",
+        ],
+        ["Perfeito! Às 16h eu tô lá 😊", true, "10:40"],
+        ["Combinado! Até mais tarde 🌿", false, "10:42"],
+      ];
+      let messages = initialMessages;
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem("psiu-conversation") || "null",
+        );
+        if (Array.isArray(saved))
+          messages = saved.filter(
+            (m) =>
+              Array.isArray(m) &&
+              typeof m[0] === "string" &&
+              typeof m[1] === "boolean" &&
+              typeof m[2] === "string",
+          );
+      } catch {}
+      function save() {
+        try {
+          localStorage.setItem("psiu-conversation", JSON.stringify(messages));
+        } catch {
+          notify("Não foi possível salvar as mensagens neste navegador.");
+        }
+      }
+      function renderMessages() {
+        const el = $("messages");
+        el.innerHTML = "";
+        messages.forEach(([content, mine]) => {
+          const row = document.createElement("div");
+          row.className = "message" + (mine ? " mine" : "");
+          const wrap = document.createElement("div");
+          wrap.className = "bubble-wrap";
+          const bubble = document.createElement("div");
+          bubble.className = "bubble";
+          bubble.textContent = content;
+          wrap.append(bubble);
+          row.append(wrap);
+          el.append(row);
+        });
+        el.scrollTop = el.scrollHeight;
+      }
+      $("composer").onsubmit = (e) => {
+        e.preventDefault();
+        const input = $("message-input"),
+          value = input.value.trim();
+        if (!value) return;
+        const time = new Date().toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        messages.push([value, true, time]);
+        input.value = "";
+        save();
+        renderMessages();
+        input.focus();
+      };
+      $("message-input").onkeydown = (e) => {
+        if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+          e.preventDefault();
+          $("composer").requestSubmit();
+        }
+      };
+      let toastTimer;
+      function notify(text) {
+        $("toast").textContent = text;
+        $("toast").hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => ($("toast").hidden = true), 3500);
+      }
+      renderMessages();
+    </script>
+  </body>
+</html>
