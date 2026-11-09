@@ -5,16 +5,23 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test",
+    "test:failover": "node scripts/check-failover.js",
     "dev": "nodemon ./index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "up": "docker compose up --build -d"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "express": "^4.22.3",
     "nodemon": "^3.1.14",
+    "redis": "^6.3.1",
     "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
   }
 }

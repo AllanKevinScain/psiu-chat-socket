@@ -47,15 +47,25 @@ test("controlador preserva o texto em falhas, evita envios simultâneos e limpa 
   assert.deepEqual(states, [true, false, true, false]);
 });
 
-test("gateway identifica autoria e impede envio desconectado", async () => {
+test("gateway restaura a sessão e combina histórico com eventos sem duplicar", async () => {
   const { createSocketChatGateway } = await import("../src/client/infrastructure/socket-chat-gateway.js");
   const handlers = {};
   const socket = { id: "self", connected: false, on: (name, handler) => { handlers[name] = handler; } };
-  const gateway = createSocketChatGateway(socket);
+  let token = "saved-token";
+  const storage = {
+    getItem: () => token,
+    setItem: (key, value) => { token = value; },
+  };
+  const gateway = createSocketChatGateway(socket, storage);
   const received = [];
   gateway.onMessage(message => received.push(message));
-  handlers["chat message"]({ text: "oi", senderId: "self" });
-  handlers["chat message"]({ text: "olá", senderId: "other" });
+  socket.auth(auth => assert.deepEqual(auth, { sessionToken: "saved-token" }));
+  const own = { id: "1", text: "oi", senderId: "stable-session" };
+  handlers["chat message"](own);
+  assert.equal(received.length, 0);
+  handlers["chat ready"]({ sessionId: "stable-session", sessionToken: "new-token", history: [own] });
+  handlers["chat message"]({ id: "2", text: "olá", senderId: "other" });
+  assert.equal(token, "new-token");
   assert.deepEqual(received.map(message => message.mine), [true, false]);
   await assert.rejects(gateway.send("oi"), /Sem conexão/);
 });
