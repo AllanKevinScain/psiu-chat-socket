@@ -26,15 +26,31 @@ export function createChatView(document) {
       form.setAttribute("aria-busy", String(sending));
       if (!sending) input.focus();
     },
-    addMessage({ text, mine, senderId }) {
+    addMessage({ text, mine, senderId, type, participant }) {
       const row = document.createElement("div");
+      const avatar = document.createElement("img");
+      if (participant?.img) {
+        avatar.className = "message-avatar";
+        avatar.alt = "";
+        avatar.referrerPolicy = "no-referrer";
+        avatar.addEventListener("error", () => avatar.remove(), { once: true });
+        avatar.src = participant.img;
+      }
+      if (type === "entry") {
+        row.className = "message-entry";
+        if (participant?.img) row.append(avatar);
+        row.append(text);
+        messages.append(row);
+        messages.scrollTop = messages.scrollHeight;
+        return;
+      }
       row.className = mine ? "message mine" : "message";
       const wrap = document.createElement("div");
       wrap.className = "bubble-wrap";
       const sender = document.createElement("div");
       sender.className = "message-sender";
-      sender.textContent = senderId;
-      sender.setAttribute("aria-label", `Identificador do remetente: ${senderId}`);
+      if (participant?.img) sender.append(avatar);
+      sender.append(participant?.name || senderId);
       const bubble = document.createElement("div");
       bubble.className = "bubble";
       bubble.textContent = text;

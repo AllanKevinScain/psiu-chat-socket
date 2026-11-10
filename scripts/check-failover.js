@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { randomUUID } = require("node:crypto");
 const { execFileSync } = require("node:child_process");
-const { once } = require("node:events");
+const { on, once } = require("node:events");
 const { setTimeout: delay } = require("node:timers/promises");
 const { io } = require("socket.io-client");
 
@@ -47,12 +47,18 @@ async function connect() {
 
 async function send(sender, receiver, label, senderId) {
   const text = `${runId} ${label}`;
-  const received = next(receiver, "chat message");
-  assert.deepEqual(await sender.timeout(3000).emitWithAck("chat message", text), { ok: true });
-  const message = await received;
-  assert.equal(message.text, text);
-  assert.equal(message.senderId, senderId);
-  return message;
+  const events = on(receiver, "chat message", { signal: AbortSignal.timeout(15_000) });
+  try {
+    assert.deepEqual(await sender.timeout(3000).emitWithAck("chat message", text), { ok: true });
+    for await (const [message] of events) {
+      if (message.type === "entry") continue;
+      assert.equal(message.text, text);
+      assert.equal(message.senderId, senderId);
+      return message;
+    }
+  } finally {
+    await events.return();
+  }
 }
 
 async function waitForBackend(node) {
@@ -74,7 +80,8 @@ async function check() {
     const second = await connect();
     assert.deepEqual([backend(first.socket), backend(second.socket)].sort(), ["a", "b"]);
     const [a, b] = backend(first.socket) === "a" ? [first, second] : [second, first];
-    await send(a.socket, b.socket, "A para B", a.snapshot.sessionId);
+    const before = await send(a.socket, b.socket, "A para B", a.snapshot.sessionId);
+    assert.ok(before.participant?.name && before.participant?.img);
     await send(b.socket, a.socket, "B para A", b.snapshot.sessionId);
 
     // Deixa o transporte reconectar sozinho, mas só restaura a sessão
@@ -98,10 +105,13 @@ async function check() {
     const snapshot = await recovered;
     assert.equal(backend(a.socket), "b");
     assert.equal(snapshot.sessionId, a.snapshot.sessionId);
+    assert.equal(snapshot.history.filter(message =>
+      message.type === "entry" && message.senderId === snapshot.sessionId).length, 1);
     assert.ok(snapshot.history.some(message => message.id === missed.id),
       "A mensagem enviada antes da restauração deve estar no histórico.");
     assertPresence(a.socket, snapshot.sessionId);
-    await send(a.socket, b.socket, "após reconexão", a.snapshot.sessionId);
+    const after = await send(a.socket, b.socket, "após reconexão", a.snapshot.sessionId);
+    assert.deepEqual(after.participant, before.participant);
 
     compose("start", "chat-a");
     stopped = false;

@@ -1,3 +1,5 @@
+const { pickParticipant } = require("../domain/participant");
+
 function createSocketBroadcaster(io, distributed) {
   if (!distributed) return { publish: message => io.emit("chat message", message) };
   return {
@@ -8,13 +10,15 @@ function createSocketBroadcaster(io, distributed) {
   };
 }
 
-function registerSocketChat(io, { publishMessage, distributed }) {
+function registerSocketChat(io, { publishMessage, publishEntry, distributed }) {
   io.on("connection", async socket => {
     let senderId = socket.id;
+    let participant;
     if (distributed) {
       try {
         const session = await distributed.restoreSession(socket.handshake.auth.sessionToken);
         senderId = session.sessionId;
+        participant = session.participant;
         if (!socket.connected) return;
         await socket.join(session.room);
         const history = await distributed.history();
@@ -32,23 +36,29 @@ function registerSocketChat(io, { publishMessage, distributed }) {
           await distributed.removePresence(senderId, socket.id);
           return;
         }
+        if (session.isNew) await publishEntry(senderId, participant);
         socket.emit("chat ready", { sessionId: senderId, sessionToken: session.token, history });
       } catch {
         socket.conn.close();
         return;
       }
+    } else {
+      participant = pickParticipant();
     }
 
     socket.on("chat message", async (text, acknowledge) => {
       const reply = typeof acknowledge === "function" ? acknowledge : () => {};
       try {
-        await publishMessage({ text, senderId });
+        await publishMessage({ text, senderId, participant });
         reply({ ok: true });
       } catch (error) {
         reply({ ok: false, error: error.message });
       }
     });
-    if (!distributed) socket.emit("chat ready", { sessionId: senderId, history: [] });
+    if (!distributed) {
+      publishEntry(senderId, participant);
+      socket.emit("chat ready", { sessionId: senderId, history: [] });
+    }
   });
 }
 

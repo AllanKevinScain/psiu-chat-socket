@@ -99,13 +99,20 @@ test("HTTP serve os módulos e Socket.IO transmite entre duas conexões sem dupl
   const a = await connect(), b = await connect();
   await a.post('420["chat message","  Olá mundo  "]');
   const ownPackets = await a.poll(), otherPackets = await b.poll();
-  const ownMessages = ownPackets.filter(packet => packet.startsWith("42"));
+  const readMessages = packets => packets
+    .filter(packet => packet.startsWith("42"))
+    .map(packet => JSON.parse(packet.slice(2))[1]);
+  const ownEvents = readMessages(ownPackets);
+  const entry = ownEvents.find(message => message.type === "entry");
+  assert.equal(entry.senderId, b.id);
+  assert.match(entry.text, /entrou na conversa/);
+  const ownMessages = ownEvents.filter(message => message.type !== "entry");
   assert.equal(ownMessages.length, 1);
-  const message = JSON.parse(ownMessages[0].slice(2))[1];
+  const [message] = ownMessages;
   assert.equal(message.text, "Olá mundo");
   assert.equal(message.senderId, a.id);
   assert.ok(message.id);
-  assert.deepEqual(JSON.parse(otherPackets.find(packet => packet.startsWith("42")).slice(2))[1], message);
+  assert.deepEqual(readMessages(otherPackets).find(event => event.type !== "entry"), message);
   assert.ok(ownPackets.some(packet => packet === '430[{"ok":true}]'));
   await a.post('421["chat message","   "]');
   const rejected = await a.poll();

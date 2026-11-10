@@ -24,11 +24,19 @@ function createChatServer({ distributed } = {}) {
   app.get("/styles.css", (req, res) => res.sendFile(join(root, "styles.css")));
   app.use("/js", express.static(join(root, "src/client")));
 
+  const broadcaster = createSocketBroadcaster(io, distributed);
   const publishMessage = createPublishMessage({
-    broadcaster: createSocketBroadcaster(io, distributed),
+    broadcaster,
     generateId: randomUUID,
   });
-  registerSocketChat(io, { publishMessage, distributed });
+  const publishEntry = (senderId, participant) => broadcaster.publish({
+    id: randomUUID(),
+    type: "entry",
+    senderId,
+    participant,
+    text: `${participant.name} entrou na conversa.`,
+  });
+  registerSocketChat(io, { publishMessage, publishEntry, distributed });
   return { app, server, io };
 }
 

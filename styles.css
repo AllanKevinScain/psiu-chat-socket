@@ -68,6 +68,21 @@ svg {
   padding: 28px 6.5%;
   background: radial-gradient(ellipse at 90% 95%, #f8f9f4, transparent 65%);
 }
+.message-entry {
+  text-align: center;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.message-avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: cover;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-inline-end: 0.4rem;
+}
+
 .message {
   display: flex;
   align-items: flex-end;

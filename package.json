@@ -8,7 +8,7 @@
     "test:failover": "node scripts/check-failover.js",
     "dev": "nodemon ./index.js",
     "start": "node index.js",
-    "up": "docker compose up --build -d"
+    "up": "docker compose up -d"
   },
   "keywords": [],
   "author": "",

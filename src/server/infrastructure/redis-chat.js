@@ -1,6 +1,7 @@
 const { randomUUID } = require("node:crypto");
 const { createClient } = require("redis");
 const { createAdapter } = require("@socket.io/redis-adapter");
+const { pickParticipant, legacyParticipant } = require("../domain/participant");
 
 const room = "global";
 const historyKey = "psiu:room:global:messages";
@@ -31,11 +32,15 @@ async function connectRedisChat(url) {
     async restoreSession(token) {
       if (typeof token === "string" && /^[a-f0-9-]{36}$/.test(token)) {
         const saved = await state.getEx(sessionKey(token), { EX: sessionTTL });
-        if (saved) return JSON.parse(saved);
+        if (saved) {
+          const session = JSON.parse(saved);
+          session.participant ??= legacyParticipant(session.sessionId);
+          return { ...session, isNew: false };
+        }
       }
-      const session = { token: randomUUID(), sessionId: randomUUID(), room };
+      const session = { token: randomUUID(), sessionId: randomUUID(), room, participant: pickParticipant() };
       await state.set(sessionKey(session.token), JSON.stringify(session), { EX: sessionTTL });
-      return session;
+      return { ...session, isNew: true };
     },
     async renewPresence(session, socketId) {
       await state.multi()
