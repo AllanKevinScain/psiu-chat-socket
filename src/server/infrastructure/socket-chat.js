@@ -10,15 +10,17 @@ function createSocketBroadcaster(io, distributed) {
   };
 }
 
-function registerSocketChat(io, { publishMessage, publishEntry, distributed }) {
+function registerSocketChat(io, { publishMessage, publishEntry, distributed, recordActivity }) {
   io.on("connection", async socket => {
     let senderId = socket.id;
     let participant;
+    let isNew = true;
     if (distributed) {
       try {
         const session = await distributed.restoreSession(socket.handshake.auth.sessionToken);
         senderId = session.sessionId;
         participant = session.participant;
+        isNew = session.isNew;
         if (!socket.connected) return;
         await socket.join(session.room);
         const history = await distributed.history();
@@ -37,6 +39,7 @@ function registerSocketChat(io, { publishMessage, publishEntry, distributed }) {
           return;
         }
         if (session.isNew) await publishEntry(senderId, participant);
+        if (!socket.connected) return;
         socket.emit("chat ready", { sessionId: senderId, sessionToken: session.token, history });
       } catch {
         socket.conn.close();
@@ -45,6 +48,9 @@ function registerSocketChat(io, { publishMessage, publishEntry, distributed }) {
     } else {
       participant = pickParticipant();
     }
+
+    recordActivity(isNew ? "entrou no chat" : "reconectou", participant.name);
+    socket.once("disconnect", () => recordActivity("desconectou", participant.name));
 
     socket.on("chat message", async (text, acknowledge) => {
       const reply = typeof acknowledge === "function" ? acknowledge : () => {};

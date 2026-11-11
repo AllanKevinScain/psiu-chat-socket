@@ -1,7 +1,7 @@
 x-chat: &chat
   image: psiu-chat:local
   restart: unless-stopped
-  environment:
+  environment: &chat-env
     PORT: 3000
     REDIS_URL: ${REDIS_URL:-redis://redis:6379}
   depends_on:
@@ -13,9 +13,17 @@ services:
   chat-a:
     <<: *chat
     build: .
+    environment:
+      <<: *chat-env
+      CHAT_INSTANCE: chat-a
+      CHAT_PEER: chat-b
   chat-b:
     <<: *chat
     pull_policy: never
+    environment:
+      <<: *chat-env
+      CHAT_INSTANCE: chat-b
+      CHAT_PEER: chat-a
   redis:
     image: redis:7-alpine
     restart: unless-stopped

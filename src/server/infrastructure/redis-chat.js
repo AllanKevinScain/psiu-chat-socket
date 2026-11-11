@@ -5,6 +5,21 @@ const { pickParticipant, legacyParticipant } = require("../domain/participant");
 
 const room = "global";
 const historyKey = "psiu:room:global:messages";
+const activityKey = "psiu:activity";
+const activeInstances = "psiu:active-instances";
+const heartbeatKey = instance => `psiu:heartbeat:${instance}`;
+const recordStoppedInstance = `
+  if redis.call('SREM', KEYS[1], ARGV[1]) == 1 then
+    redis.call('LPUSH', KEYS[2], ARGV[2])
+    redis.call('LTRIM', KEYS[2], 0, 199)
+  end
+`;
+
+function stoppedEvent(instance) {
+  return JSON.stringify({
+    time: new Date().toISOString(), action: "instância desligada", actor: instance, instance,
+  });
+}
 const sessionTTL = 86_400;
 const presenceKey = (sessionId, socketId) => `psiu:presence:${sessionId}:${socketId}`;
 const sessionKey = sessionId => `psiu:session:${sessionId}`;
@@ -51,6 +66,33 @@ async function connectRedisChat(url) {
     removePresence: (sessionId, socketId) => state.del(presenceKey(sessionId, socketId)),
     async history() {
       return (await state.lRange(historyKey, 0, -1)).map(entry => JSON.parse(entry));
+    },
+    async recordActivity(event) {
+      await state.multi().lPush(activityKey, JSON.stringify(event)).lTrim(activityKey, 0, 199).exec();
+    },
+    async monitorInstance(instance, peer) {
+      await state.eval(`
+        redis.call('SET', KEYS[3], '1', 'EX', 8)
+        redis.call('SADD', KEYS[1], ARGV[3])
+        if redis.call('EXISTS', KEYS[4]) == 0 then
+          ${recordStoppedInstance}
+        end
+      `, {
+        keys: [activeInstances, activityKey, heartbeatKey(instance), heartbeatKey(peer)],
+        arguments: [peer, stoppedEvent(peer), instance],
+      });
+    },
+    async stopInstance(instance) {
+      await state.eval(`
+        redis.call('DEL', KEYS[3])
+        ${recordStoppedInstance}
+      `, {
+        keys: [activeInstances, activityKey, heartbeatKey(instance)],
+        arguments: [instance, stoppedEvent(instance)],
+      });
+    },
+    async readActivity() {
+      return (await state.lRange(activityKey, 0, 199)).map(entry => JSON.parse(entry));
     },
     async append(message) {
       if (!clients.every(client => client.isReady)) {
