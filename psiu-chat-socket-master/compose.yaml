@@ -1,0 +1,54 @@
+x-chat: &chat
+  image: psiu-chat:local
+  restart: unless-stopped
+  environment: &chat-env
+    PORT: 3000
+    REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+  depends_on:
+    redis:
+      condition: service_healthy
+  networks: [frontend, state]
+
+services:
+  chat-a:
+    <<: *chat
+    build: .
+    environment:
+      <<: *chat-env
+      CHAT_INSTANCE: chat-a
+      CHAT_PEER: chat-b
+  chat-b:
+    <<: *chat
+    pull_policy: never
+    environment:
+      <<: *chat-env
+      CHAT_INSTANCE: chat-b
+      CHAT_PEER: chat-a
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    networks: [state]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 1s
+      retries: 5
+  proxy:
+    image: haproxy:3.0-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PUBLIC_PORT:-8080}:8080"
+    networks: [frontend]
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+
+networks:
+  frontend:
+  state:
+    internal: true
+
+volumes:
+  redis-data:

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f7f2" />
+    <title>psiu — boas conversas começam aqui</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <svg class="svg-definitions" aria-hidden="true">
+      <defs>
+        <symbol id="send" viewBox="0 0 24 24">
+          <path d="m21 3-7 18-4-8-8-4 19-6ZM10 13 21 3" />
+        </symbol>
+      </defs>
+    </svg>
+    <main class="app">
+      <h1 class="brand">psiu<span>.</span></h1>
+      <section class="chat" aria-label="Conversa">
+        <div
+          class="messages"
+          id="messages"
+          role="log"
+          aria-label="Mensagens"
+          aria-live="polite"
+        ></div>
+        <div class="composer-area">
+          <form class="composer" id="composer">
+            <textarea
+              id="message-input"
+              placeholder="Escreva uma mensagem…"
+              aria-label="Escreva uma mensagem"
+              rows="1"
+              maxlength="4000"
+            ></textarea
+            ><button type="submit" class="send" aria-label="Enviar mensagem">
+              <svg><use href="#send" /></svg>
+            </button>
+          </form>
+        </div>
+      </section>
+    </main>
+    <div class="toast" id="toast" role="status" hidden></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/js/main.js"></script>
+  </body>
+</html>
