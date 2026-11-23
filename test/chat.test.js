@@ -93,8 +93,13 @@ test("HTTP serve os módulos e Socket.IO transmite entre duas conexões sem dupl
     const post = body => fetch(url, { method: "POST", body, headers: { "Content-Type": "text/plain" } });
     const poll = async () => (await (await fetch(url)).text()).split("\x1e");
     await post("40");
-    const connection = (await poll()).find(packet => packet.startsWith("40"));
-    return { post, poll, id: JSON.parse(connection.slice(2)).sid };
+    let packets = await poll();
+    let ready = packets.find(packet => packet.startsWith('42["chat ready"'));
+    if (!ready) {
+      packets = await poll();
+      ready = packets.find(packet => packet.startsWith('42["chat ready"'));
+    }
+    return { post, poll, id: JSON.parse(ready.slice(2))[1].sessionId };
   }
   const a = await connect(), b = await connect();
   await a.post('420["chat message","  Olá mundo  "]');

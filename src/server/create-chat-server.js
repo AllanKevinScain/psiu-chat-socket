@@ -70,7 +70,8 @@ function createChatServer({ distributed, instance = "chat-local" } = {}) {
   app.get("/logo.svg", (req, res) => res.sendFile(join(root, "src/assets/logo.svg")));
   app.use("/js", express.static(join(root, "src/client")));
 
-  const broadcaster = createSocketBroadcaster(io, distributed);
+  const chatState = distributed || require("./infrastructure/local-chat").createLocalChat();
+  const broadcaster = createSocketBroadcaster(io, chatState);
   const publishMessage = createPublishMessage({
     broadcaster,
     generateId: randomUUID,
@@ -82,7 +83,7 @@ function createChatServer({ distributed, instance = "chat-local" } = {}) {
     participant,
     text: `${participant.name} entrou na conversa.`,
   });
-  registerSocketChat(io, { publishMessage, publishEntry, distributed, recordActivity });
+  registerSocketChat(io, { publishMessage, publishEntry, distributed: chatState, recordActivity });
   return { app, server, io, recordActivity, flushActivity: () => Promise.all(pendingActivity) };
 }
 
