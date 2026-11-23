@@ -52,12 +52,23 @@ function registerSocketChat(io, { publishMessage, publishEntry, distributed, rec
     recordActivity(isNew ? "entrou no chat" : "reconectou", participant.name);
     socket.once("disconnect", () => recordActivity("desconectou", participant.name));
 
-    socket.on("chat message", async (text, acknowledge) => {
+    socket.on("chat failure", async (report, acknowledge) => {
+      if (typeof report?.details !== "string" || report.details.length > 300 ||
+          typeof report.time !== "string" || !Number.isFinite(Date.parse(report.time))) return;
+      if (report.id !== undefined && (typeof report.id !== "string" ||
+          !/^[a-f0-9-]{36}$/.test(report.id))) return;
+      await recordActivity("falha no envio", participant.name,
+        report.details, new Date(report.time).toISOString(), report.id);
+      if (typeof acknowledge === "function") acknowledge({ ok: true });
+    });
+    socket.on("chat message", async (payload, acknowledge) => {
       const reply = typeof acknowledge === "function" ? acknowledge : () => {};
       try {
-        await publishMessage({ text, senderId, participant });
+        const input = typeof payload === "string" ? { text: payload } : payload;
+        await publishMessage({ text: input?.text, attachment: input?.attachment, senderId, participant });
         reply({ ok: true });
       } catch (error) {
+        await recordActivity("falha no envio", participant.name, error.message);
         reply({ ok: false, error: error.message });
       }
     });

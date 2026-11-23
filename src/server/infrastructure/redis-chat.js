@@ -29,6 +29,7 @@ async function connectRedisChat(url) {
   const publisher = state.duplicate();
   const subscriber = state.duplicate();
   const clients = [state, publisher, subscriber];
+  let monitoringSince = Date.now();
   for (const client of clients) {
     client.on("error", () => console.error("Conexão com Redis indisponível."));
   }
@@ -68,18 +69,31 @@ async function connectRedisChat(url) {
       return (await state.lRange(historyKey, 0, -1)).map(entry => JSON.parse(entry));
     },
     async recordActivity(event) {
-      await state.multi().lPush(activityKey, JSON.stringify(event)).lTrim(activityKey, 0, 199).exec();
+      await state.eval(`
+        if redis.call('SET', KEYS[2], '1', 'NX', 'EX', 86400) then
+          redis.call('LPUSH', KEYS[1], ARGV[1])
+          redis.call('LTRIM', KEYS[1], 0, 199)
+        end
+      `, {
+        keys: [activityKey, `psiu:activity-seen:${event.id}`],
+        arguments: [JSON.stringify(event)],
+      });
     },
     async monitorInstance(instance, peer) {
+      if (!clients.every(client => client.isReady)) {
+        monitoringSince = Date.now();
+        return;
+      }
       await state.eval(`
         redis.call('SET', KEYS[3], '1', 'EX', 8)
         redis.call('SADD', KEYS[1], ARGV[3])
-        if redis.call('EXISTS', KEYS[4]) == 0 then
+        if ARGV[4] == '1' and redis.call('EXISTS', KEYS[4]) == 0 then
           ${recordStoppedInstance}
         end
       `, {
         keys: [activeInstances, activityKey, heartbeatKey(instance), heartbeatKey(peer)],
-        arguments: [peer, stoppedEvent(peer), instance],
+        arguments: [peer, stoppedEvent(peer), instance,
+          Date.now() - monitoringSince >= 8000 ? "1" : "0"],
       });
     },
     async stopInstance(instance) {

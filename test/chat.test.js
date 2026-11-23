@@ -118,4 +118,17 @@ test("HTTP serve os módulos e Socket.IO transmite entre duas conexões sem dupl
   const rejected = await a.poll();
   assert.ok(rejected.some(packet => packet.startsWith('431[{"ok":false')));
   assert.ok(rejected.every(packet => !packet.startsWith("42")));
+  const failures = await (await fetch(base + "/historico/eventos")).json();
+  assert.ok(failures.some(event => event.action === "falha no envio" && event.details.includes("Escreva")));
+  const attachment = { name: "teste.txt", data: "data:text/plain;base64,b2k=" };
+  await a.post('422' + JSON.stringify(["chat message", { text: "", attachment }]));
+  const attachedPackets = await a.poll();
+  assert.ok(attachedPackets.includes('432[{"ok":true}]'));
+  assert.deepEqual(readMessages(attachedPackets)[0].attachment, attachment);
+  assert.deepEqual(readMessages(await b.poll())[0].attachment, attachment);
+  const report = { time: new Date().toISOString(), details: "Envio sem conexão" };
+  await a.post('423' + JSON.stringify(["chat failure", report]));
+  assert.ok((await a.poll()).includes('433[{"ok":true}]'));
+  const reports = await (await fetch(base + "/historico/eventos")).json();
+  assert.ok(reports.some(event => event.action === "falha no envio" && event.details === report.details));
 });

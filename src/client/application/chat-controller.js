@@ -6,11 +6,12 @@ export function createChatController({ view, gateway }) {
   async function sendMessage() {
     if (sending) return;
     const text = view.getText().trim();
-    if (!text) return;
+    const attachment = view.getAttachment?.();
+    if (!text && !attachment) return;
     sending = true;
     view.setSending(true);
     try {
-      await gateway.send(text);
+      await gateway.send(attachment ? { text, attachment } : text);
       view.clear();
     } catch (error) {
       view.notify(error.message);
@@ -23,6 +24,7 @@ export function createChatController({ view, gateway }) {
     view.onSubmit(sendMessage);
     gateway.onMessage(message => view.addMessage(message));
     gateway.onConnectionChange(connected => {
+      view.setConnected?.(connected);
       if (!connected) view.notify("Sem conexão. Aguardando reconexão para enviar mensagens.");
     });
   }

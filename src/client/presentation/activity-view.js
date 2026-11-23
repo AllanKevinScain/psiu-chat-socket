@@ -12,6 +12,7 @@ const actions = new Map([
   ["reconectou", { label: "Reconectou" }],
   ["instância desligada", { label: "Desligou", indicator: "X" }],
   ["instância iniciada", { label: "Ligou", indicator: "V" }],
+  ["falha no envio", { label: "Falha no envio da mensagem" }],
 ]);
 let lastSnapshot;
 
@@ -26,6 +27,13 @@ function renderEvent(event) {
   instance.className = "instance";
   instance.textContent = indicator ?? event.instance;
   row.append(time, ` - ${event.actor} - ${label}`, document.createElement("br"), instance);
+  if (event.details) {
+    row.classList.add("event-failure");
+    const details = document.createElement("p");
+    details.className = "event-details";
+    details.textContent = event.details;
+    row.append(details);
+  }
   return row;
 }
 

@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#f7f7f2" />
     <title>psiu — boas conversas começam aqui</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
   </head>
   <body>
     <svg class="svg-definitions" aria-hidden="true">
@@ -16,8 +17,15 @@
       </defs>
     </svg>
     <main class="app">
-      <h1 class="brand">psiu<span>.</span></h1>
+      <header class="app-header">
+        <h1 class="brand"><img src="/logo.svg" alt="" />psiu<span>.</span></h1>
+        <a class="nav-link" href="/historico">Histórico de atividades ↗</a>
+      </header>
       <section class="chat" aria-label="Conversa">
+        <header class="chat-header">
+          <div><h2>Conversa aberta</h2><p>Um espaço para tirar dúvidas e trocar ideias.</p></div>
+          <span id="connection-status" class="connection-status" role="status">Conectando…</span>
+        </header>
         <div
           class="messages"
           id="messages"
@@ -26,7 +34,15 @@
           aria-live="polite"
         ></div>
         <div class="composer-area">
+          <div class="attachment-preview" id="attachment-preview" hidden>
+            <span id="attachment-name"></span>
+            <button id="remove-attachment" type="button" aria-label="Remover anexo">×</button>
+          </div>
+          <div class="emoji-picker" id="emoji-picker" hidden aria-label="Selecionar emoji"></div>
           <form class="composer" id="composer">
+            <button type="button" class="tool-button" id="emoji-toggle" aria-label="Adicionar emoji" aria-expanded="false" aria-controls="emoji-picker">☺</button>
+            <button type="button" class="tool-button" id="attach-toggle" aria-label="Anexar arquivo">＋</button>
+            <input type="file" id="file-input" hidden />
             <textarea
               id="message-input"
               placeholder="Escreva uma mensagem…"
@@ -38,6 +54,7 @@
               <svg><use href="#send" /></svg>
             </button>
           </form>
+          <p class="composer-hint">Enter envia · Shift + Enter adiciona uma linha · Anexos até 2 MB</p>
         </div>
       </section>
     </main>
