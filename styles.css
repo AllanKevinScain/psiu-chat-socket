@@ -65,6 +65,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 #events li { background: #fffefa; border: 1px solid var(--line); border-left: 3px solid #8ea776; border-radius: 0 12px 12px 0; padding: 16px 20px; margin-bottom: 10px; font-size: 14px; overflow-wrap: anywhere; }
 #events .instance { display: inline-block; margin-top: 6px; font-size: 12px; color: var(--muted); }
 #events .event-failure { border-left-color: #b55240; background: #fff8f4; }
+#events .event-disconnected { border-color: #e1c568; border-left-color: #ad7c12; background: #fff6d6; }
+#events .event-instance-down { border-color: #e5a09c; border-left-color: #bf342d; background: #ffe5e3; }
 .event-details { margin: 8px 0 0; color: #954530; font-size: 12px; }
 @media (max-width: 620px) {
   .app { padding: 16px 0 0; }

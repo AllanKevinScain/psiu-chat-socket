@@ -15,9 +15,9 @@ const recordStoppedInstance = `
   end
 `;
 
-function stoppedEvent(instance) {
+function stoppedEvent(instance, action = "instância desligada") {
   return JSON.stringify({
-    time: new Date().toISOString(), action: "instância desligada", actor: instance, instance,
+    time: new Date().toISOString(), action, actor: instance, instance,
   });
 }
 const sessionTTL = 86_400;
@@ -42,8 +42,8 @@ async function connectRedisChat(url) {
     onInterruption(handler) {
       for (const client of clients) client.on("reconnecting", handler);
     },
-    close() {
-      for (const client of clients) client.destroy();
+    async close() {
+      await Promise.all(clients.filter(client => client.isOpen).map(client => client.close()));
     },
     async restoreSession(token) {
       if (typeof token === "string" && /^[a-f0-9-]{36}$/.test(token)) {
@@ -85,15 +85,15 @@ async function connectRedisChat(url) {
         return;
       }
       await state.eval(`
-        redis.call('SET', KEYS[3], '1', 'EX', 8)
+        redis.call('SET', KEYS[3], '1', 'EX', 30)
         redis.call('SADD', KEYS[1], ARGV[3])
         if ARGV[4] == '1' and redis.call('EXISTS', KEYS[4]) == 0 then
           ${recordStoppedInstance}
         end
       `, {
         keys: [activeInstances, activityKey, heartbeatKey(instance), heartbeatKey(peer)],
-        arguments: [peer, stoppedEvent(peer), instance,
-          Date.now() - monitoringSince >= 8000 ? "1" : "0"],
+        arguments: [peer, stoppedEvent(peer, "instância indisponível"), instance,
+          Date.now() - monitoringSince >= 30000 ? "1" : "0"],
       });
     },
     async stopInstance(instance) {

@@ -37,7 +37,7 @@ async function start() {
       }
       await io.close();
       await flushActivity();
-      distributed?.close();
+      await distributed?.close();
     });
   }
   server.listen(port, () => {

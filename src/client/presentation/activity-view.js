@@ -8,9 +8,10 @@ const timeFormatter = new Intl.DateTimeFormat("pt-BR", {
 });
 const actions = new Map([
   ["entrou no chat", { label: "Conectou" }],
-  ["desconectou", { label: "Desconectou" }],
+  ["desconectou", { label: "Desconectou", cardClass: "event-disconnected" }],
   ["reconectou", { label: "Reconectou" }],
-  ["instância desligada", { label: "Desligou", indicator: "X" }],
+  ["instância desligada", { label: "Desligou", indicator: "X", cardClass: "event-instance-down" }],
+  ["instância indisponível", { label: "Sem sinal de atividade há pelo menos 30 segundos", indicator: "X", cardClass: "event-instance-down" }],
   ["instância iniciada", { label: "Ligou", indicator: "V" }],
   ["falha no envio", { label: "Falha no envio da mensagem" }],
 ]);
@@ -19,7 +20,8 @@ let lastSnapshot;
 function renderEvent(event) {
   const row = document.createElement("li");
   const date = new Date(event.time);
-  const { label, indicator } = actions.get(event.action) ?? { label: event.action };
+  const { label, indicator, cardClass } = actions.get(event.action) ?? { label: event.action };
+  if (cardClass) row.classList.add(cardClass);
   const time = document.createElement("time");
   time.dateTime = event.time;
   time.textContent = `${timeFormatter.format(date)} - ${dateFormatter.format(date)}`;
